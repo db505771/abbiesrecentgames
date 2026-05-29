@@ -1,1 +1,346 @@
-# abbiesrecentgames
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta
+  name="viewport"
+  content="
+    width=device-width,
+    initial-scale=1.0,
+    maximum-scale=1.0,
+    user-scalable=no
+  "
+/>
+
+<title>Continue Playing</title>
+
+<style>
+
+html,
+body{
+  margin:0;
+  width:100%;
+  height:100%;
+
+  overflow:hidden;
+
+  background:#000000;
+  color:white;
+
+  font-family:Arial, sans-serif;
+}
+
+/* PAGE */
+
+.page{
+  padding:18px;
+}
+
+/* HEADER */
+
+.topBar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  margin-bottom:18px;
+}
+
+.title{
+  font-size:24px;
+  font-weight:700;
+  color:white;
+}
+
+/* TOGGLE */
+
+select{
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+
+  background:white;
+  color:black;
+
+  border:none;
+  border-radius:999px;
+
+  height:32px;
+
+  padding:0 14px;
+
+  font-size:13px;
+  font-weight:600;
+
+  text-align:center;
+  text-align-last:center;
+
+  outline:none;
+
+  cursor:pointer;
+
+  flex-shrink:0;
+}
+
+/* GAME ROW */
+
+.gamesRow{
+  display:flex;
+  gap:12px;
+
+  overflow-x:auto;
+  overflow-y:hidden;
+
+  padding-bottom:4px;
+
+  scroll-behavior:smooth;
+
+  -webkit-overflow-scrolling:touch;
+
+  scrollbar-width:none;
+
+  /* 🔥 FIX */
+  touch-action:auto;
+}
+
+.gamesRow::-webkit-scrollbar{
+  display:none;
+}
+
+/* CARD */
+
+.gameCard{
+  width:120px;
+  flex-shrink:0;
+
+  user-select:none;
+  -webkit-user-select:none;
+
+  /* 🔥 FIX */
+  pointer-events:none;
+}
+
+.thumb{
+  width:120px;
+  height:120px;
+
+  border-radius:14px;
+
+  object-fit:cover;
+
+  background:#111;
+
+  user-select:none;
+  -webkit-user-drag:none;
+}
+
+.gameName{
+  margin-top:7px;
+
+  font-size:14px;
+  font-weight:600;
+
+  line-height:1.2;
+
+  color:white;
+
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+
+  overflow:hidden;
+
+  min-height:34px;
+}
+
+.hoursPlayed{
+  margin-top:5px;
+
+  color:white;
+
+  font-size:12px;
+}
+
+/* MOBILE */
+
+@media (max-width:600px){
+
+  .gameCard{
+    width:110px;
+  }
+
+  .thumb{
+    width:110px;
+    height:110px;
+  }
+
+  .gameName{
+    font-size:13px;
+    min-height:32px;
+  }
+
+  .hoursPlayed{
+    font-size:11px;
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="page">
+
+  <div class="topBar">
+
+    <div class="title">
+      Top Games Played
+    </div>
+
+    <select id="filter" onchange="changeFilter()">
+      <option value="day">Day</option>
+      <option value="week">Week</option>
+      <option value="month">Month</option>
+      <option value="all">All</option>
+    </select>
+
+  </div>
+
+  <div
+    class="gamesRow"
+    id="gamesRow"
+  ></div>
+
+</div>
+
+<script>
+
+const API =
+"https://script.google.com/macros/s/AKfycbzcX9WsRdeEdz1ziWq4CbuUwa_WwxxUGPI1YtMTvYIHZGZ4cBus_p7qXdIIiFW_0hu_/exec";
+
+let games = [];
+
+async function loadGames(){
+
+  const res = await fetch(API);
+
+  games = await res.json();
+
+  renderGames();
+}
+
+function changeFilter(){
+
+  const row =
+    document.getElementById("gamesRow");
+
+  row.scrollLeft = 0;
+
+  renderGames();
+}
+
+function renderGames(){
+
+  const row =
+    document.getElementById("gamesRow");
+
+  row.innerHTML = "";
+
+  const filter =
+    document.getElementById("filter").value;
+
+  const now = new Date();
+
+  let filtered = games.filter(g => {
+
+    const d = new Date(g.date);
+
+    const diff =
+      (now - d) / (1000 * 60 * 60 * 24);
+
+    if(filter === "day"){
+
+      return (
+        d.getDate() === now.getDate() &&
+        d.getMonth() === now.getMonth() &&
+        d.getFullYear() === now.getFullYear()
+      );
+    }
+
+    if(filter === "week"){
+      return diff <= 7;
+    }
+
+    if(filter === "month"){
+      return diff <= 30;
+    }
+
+    return true;
+  });
+
+  // MERGE DUPLICATES
+
+  const merged = {};
+
+  filtered.forEach(g => {
+
+    if(!merged[g.id]){
+
+      merged[g.id] = {
+        ...g,
+        minutes:0
+      };
+    }
+
+    merged[g.id].minutes += g.minutes;
+  });
+
+  filtered =
+    Object.values(merged);
+
+  filtered.sort(
+    (a,b)=>b.minutes-a.minutes
+  );
+
+  // DISPLAY
+
+  filtered.forEach(g => {
+
+    const hours =
+      Math.floor(g.minutes / 60);
+
+    const mins =
+      g.minutes % 60;
+
+    row.innerHTML += `
+
+      <div class="gameCard">
+
+        <img
+          class="thumb"
+          draggable="false"
+          src="${g.image}"
+        >
+
+        <div class="gameName">
+          ${g.name}
+        </div>
+
+        <div class="hoursPlayed">
+          ${hours}h ${mins}m
+        </div>
+
+      </div>
+
+    `;
+  });
+}
+
+loadGames();
+
+setInterval(loadGames, 60000);
+
+</script>
+
+</body>
+</html>
